@@ -93,7 +93,9 @@ ref; a reusable workflow cannot see its own ref.
 
 ## Local use
 
-Clone to `~/site-toolkit`. From inside any site repo:
+Clone to `~/site-toolkit`. On a Mac also `brew install lftp rsync`: the
+built-in openrsync misreports checksums, which shows up as false drift. From
+inside any site repo:
 
 ```bash
 node ~/site-toolkit/scripts/live-check.js            # every site.config.json here

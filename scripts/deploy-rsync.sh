@@ -40,6 +40,11 @@ while IFS= read -r g; do
   [ -n "$g" ] && EX+=(--exclude "${g%/\*}")
 done <<< "$SITE_EXCLUDE_GLOBS"
 
+# macOS ships openrsync; prefer a real rsync when one is installed.
+RSYNC="${RSYNC_BIN:-}"
+[ -n "$RSYNC" ] || for p in /opt/homebrew/bin/rsync /usr/local/bin/rsync; do [ -x "$p" ] && { RSYNC="$p"; break; }; done
+RSYNC="${RSYNC:-rsync}"
+
 OPTS=(-az --itemize-changes)
 [ -n "$SITE_DELETES" ] && OPTS+=(--delete)
 [ -n "$DRY" ] && OPTS+=(--dry-run)
@@ -49,5 +54,5 @@ echo "  from $SITE_SOURCE  to ${SITE_REMOTE%%:*}:<path>"
 [ -n "$SITE_DELETES" ] && echo "  rsync uses --delete; server-owned and secret paths are excluded"
 [ -n "$DRY" ] && echo "  DRY RUN: nothing will be uploaded"
 
-rsync "${OPTS[@]}" -e "$SSH" "${EX[@]}" "$SRC" "$SITE_REMOTE"
+"$RSYNC" "${OPTS[@]}" -e "$SSH" "${EX[@]}" "$SRC" "$SITE_REMOTE"
 echo "Deploy complete: $SITE_LABEL"

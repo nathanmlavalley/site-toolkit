@@ -47,6 +47,10 @@ const CACHE_MAX_AGE_H = 6;
 const LFTP = process.env.LFTP_BIN ||
   ['/opt/homebrew/bin/lftp', '/usr/local/bin/lftp', '/usr/bin/lftp'].find(p => fs.existsSync(p)) ||
   'lftp';
+// macOS ships openrsync (protocol 29), which misreports checksums on some
+// files. Prefer a real rsync when one is installed (brew install rsync).
+const RSYNC = process.env.RSYNC_BIN ||
+  ['/opt/homebrew/bin/rsync', '/usr/local/bin/rsync'].find(p => fs.existsSync(p)) || 'rsync';
 const ALWAYS_SKIP = ['.DS_Store', '.git/', 'node_modules/'];
 
 const log = (...a) => { if (!JSON_OUT) console.log(...a); };
@@ -228,7 +232,7 @@ function checkRsync(site) {
   const ex = site.skip.map(s => `--exclude '${s.replace(/\/$/, '')}'`).join(' ');
   let out;
   try {
-    out = execSync(`rsync -n -a -i --delete -c -e "${sshCommand(site)}" ${ex} "${local}" "${site.remote}" 2>&1`,
+    out = execSync(`"${RSYNC}" -n -a -i --delete -c -e "${sshCommand(site)}" ${ex} "${local}" "${site.remote}" 2>&1`,
       { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 120000 });
   } catch (e) {
     const msg = ((e.stdout || '') + (e.stderr || '')).trim();
