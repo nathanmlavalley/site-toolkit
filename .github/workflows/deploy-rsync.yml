@@ -54,8 +54,14 @@ jobs:
           umask 077
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_KEY_FILE"
           mkdir -p ~/.ssh
+          # Pre-seed known_hosts. Best effort with retries: parallel jobs against
+          # one host can get an empty keyscan, and accept-new covers a miss.
           host="${SITE_REMOTE#*@}"; host="${host%%:*}"
-          ssh-keyscan -p "${SSH_PORT:-22}" -H "$host" >> ~/.ssh/known_hosts 2>/dev/null
+          for i in 1 2 3; do
+            ssh-keyscan -T 15 -p "${SSH_PORT:-22}" -H "$host" >> ~/.ssh/known_hosts 2>/dev/null && break
+            sleep 3
+          done
+          true
 
       - name: Refuse to overwrite work that only exists on the server
         if: ${{ !inputs.skip_drift_check }}
