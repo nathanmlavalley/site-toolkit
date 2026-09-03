@@ -65,6 +65,7 @@ const out = {
   FTP_PASSWORD: cred.password ? (env[cred.password] || '') : '',
   FTP_PORT: (cred.port && env[cred.port]) || c.port || '21',
   FTP_PROTOCOL: (cred.protocol && env[cred.protocol]) || c.protocol || 'ftp',
+  FTP_TLS: c.tls ? '1' : '',
   NTFY_URL: (c.alerts && c.alerts.ntfy_secret && env[c.alerts.ntfy_secret]) || '',
   // rsync over ssh: port and local key path from config.ssh; in CI the
   // workflow writes the key named by ssh.key_secret to SSH_KEY_FILE.

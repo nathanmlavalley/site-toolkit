@@ -149,8 +149,13 @@ function gitHistory(localDir) {
 function lftpRun(site, env, cmd) {
   const c = site.credentials;
   const creds = `${env[c.user]},${env[c.password]}`;
+  // Plain FTP unless the config says "tls": true, in which case TLS is
+  // required for both control and data (explicit FTPS), cert unverified.
+  const ssl = site.tls
+    ? 'set ftp:ssl-allow yes; set ftp:ssl-force yes; set ftp:ssl-protect-data yes; set ssl:verify-certificate no'
+    : 'set ftp:ssl-allow no';
   return execFileSync(LFTP, ['-u', creds, `ftp://${env[c.host]}`,
-    '-e', `set ftp:ssl-allow no; set net:timeout 45; ${cmd}; bye`],
+    '-e', `${ssl}; set net:timeout 45; ${cmd}; bye`],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 }
 

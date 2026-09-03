@@ -42,6 +42,8 @@ Three buckets, declared once, read by both the deploy and the drift check:
 | `server_owned` | no | no | no |
 | `secrets` | no | no | no |
 
+Add `"tls": true` for a host that requires explicit FTPS.
+
 `credentials` holds the **names** of the variables that carry each value.
 Locally they are read from `env_file`; in CI they come from repository secrets
 of the same names. `remote_dir`, `port` and `protocol` may also be given as

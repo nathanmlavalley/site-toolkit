@@ -56,8 +56,10 @@ cd "$SRC"
 # lftp echoes full URLs, credentials included, in --dry-run and on some errors.
 # Everything it prints goes through a redactor so a password can never land in
 # a terminal, a transcript or a log. The exit status is lftp's, not sed's.
+SSL="set ftp:ssl-allow no"
+[ -n "${FTP_TLS:-}" ] && SSL="set ftp:ssl-allow yes; set ftp:ssl-force yes; set ftp:ssl-protect-data yes; set ssl:verify-certificate no"
 "$LFTP" -u "$FTP_USER,$FTP_PASSWORD" "$FTP_PROTOCOL://$FTP_HOST:$FTP_PORT" \
-  -e "set ftp:ssl-allow no; set sftp:auto-confirm yes; set net:timeout 60; mirror $OPTS . '$SITE_REMOTE'; bye" 2>&1 \
+  -e "$SSL; set sftp:auto-confirm yes; set net:timeout 60; mirror $OPTS . '$SITE_REMOTE'; bye" 2>&1 \
   | sed -E 's#(://)[^/@[:space:]]+@#\1***@#g'
 RC=${PIPESTATUS[0]}
 [ "$RC" -eq 0 ] || { echo "lftp exited $RC" >&2; exit "$RC"; }
