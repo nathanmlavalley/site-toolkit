@@ -47,6 +47,17 @@ Locally they are read from `env_file`; in CI they come from repository secrets
 of the same names. `remote_dir`, `port` and `protocol` may also be given as
 variable names.
 
+For a site deployed by **rsync over SSH** instead, set `"transport": "rsync"`,
+make `remote` the `user@host:path/` target, drop `credentials`, and add:
+
+```json
+"ssh": { "port": 65002, "key": "~/.ssh/deploy_key", "key_secret": "HOSTINGER_SSH_KEY" }
+```
+
+`key` is the local key file; `key_secret` names the repository secret holding
+the private key for CI. The caller uses `deploy-rsync.yml` instead of
+`deploy-ftp.yml`. The drift check works the same way for both.
+
 **2. A caller workflow** for deploys, about fifteen lines:
 
 ```yaml
@@ -101,6 +112,7 @@ content that matches nothing in git does.
 ```
 scripts/config.js        resolve one site.config.json into shell variables
 scripts/deploy-ftp.sh    lftp mirror driven by the config
+scripts/deploy-rsync.sh  rsync-over-ssh mirror driven by the config
 scripts/live-check.js    drift checker
 scripts/guard.sh         dirty/behind/ahead preflight plus drift check
 .github/workflows/       the reusable workflows

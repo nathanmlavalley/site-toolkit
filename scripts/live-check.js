@@ -209,13 +209,26 @@ function checkFtp(site) {
   return { drift, behind, remoteOnly, notDeployed, mode: 'deep' };
 }
 
+// ssh options for an rsync site: config.ssh = { port, key, key_secret }.
+// Locally the key is a path; in CI the reusable workflow writes the secret
+// named by key_secret to SSH_KEY_FILE. Absent config.ssh, plain ssh is used
+// (the Mac mini sites rely on ~/.ssh/config and Tailscale).
+function sshCommand(site) {
+  const o = site.ssh || {};
+  const key = process.env.SSH_KEY_FILE || (o.key && expandHome(o.key));
+  const parts = ['ssh', '-o BatchMode=yes', '-o StrictHostKeyChecking=accept-new'];
+  if (o.port) parts.push(`-p ${o.port}`);
+  if (key) parts.push(`-i '${key}'`);
+  return parts.join(' ');
+}
+
 function checkRsync(site) {
   const local = path.join(REPO, site.source) + '/';
   if (!fs.existsSync(local)) return { error: `${site.source} missing` };
   const ex = site.skip.map(s => `--exclude '${s.replace(/\/$/, '')}'`).join(' ');
   let out;
   try {
-    out = execSync(`rsync -n -a -i --delete -c ${ex} "${local}" "${site.remote}" 2>&1`,
+    out = execSync(`rsync -n -a -i --delete -c -e "${sshCommand(site)}" ${ex} "${local}" "${site.remote}" 2>&1`,
       { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, timeout: 120000 });
   } catch (e) {
     const msg = ((e.stdout || '') + (e.stderr || '')).trim();

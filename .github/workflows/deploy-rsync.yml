@@ -1,0 +1,81 @@
+name: Deploy over rsync/SSH
+
+# Reusable workflow, the rsync-over-SSH twin of deploy-ftp.yml:
+#
+#   jobs:
+#     deploy:
+#       uses: nathanmlavalley/site-toolkit/.github/workflows/deploy-rsync.yml@v1.1
+#       with:
+#         config: site.config.json
+#       secrets: inherit
+#
+# The caller's site.config.json names the secret holding the SSH private key
+# (ssh.key_secret) and the port (ssh.port). The key is written to a file for
+# the job and never printed. The drift check runs first and refuses to
+# overwrite anything on the server that is in no commit.
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Path to site.config.json in the calling repo
+        type: string
+        required: true
+      skip_drift_check:
+        description: Deploy even if the live site holds content not in git
+        type: boolean
+        default: false
+      toolkit_ref:
+        description: Tag of site-toolkit to run. Match the uses ref.
+        type: string
+        default: v1.1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SECRETS_JSON: ${{ toJSON(secrets) }}
+      SSH_KEY_FILE: ${{ github.workspace }}/.deploy_key
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/checkout@v4
+        with:
+          repository: nathanmlavalley/site-toolkit
+          ref: ${{ inputs.toolkit_ref }}
+          path: .site-toolkit
+
+      - name: Install the deploy key
+        run: |
+          eval "$(node .site-toolkit/scripts/config.js --config "${{ inputs.config }}" --shell)"
+          [ -n "$SSH_PRIVATE_KEY" ] || { echo "no SSH key: set the secret named by ssh.key_secret ($SSH_KEY_SECRET)" >&2; exit 2; }
+          umask 077
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_KEY_FILE"
+          mkdir -p ~/.ssh
+          host="${SITE_REMOTE#*@}"; host="${host%%:*}"
+          ssh-keyscan -p "${SSH_PORT:-22}" -H "$host" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Refuse to overwrite work that only exists on the server
+        if: ${{ !inputs.skip_drift_check }}
+        run: node .site-toolkit/scripts/live-check.js --config "${{ inputs.config }}" --deep
+
+      - name: Deploy
+        run: bash .site-toolkit/scripts/deploy-rsync.sh --config "${{ inputs.config }}"
+
+      - name: Remove the deploy key
+        if: always()
+        run: rm -f "$SSH_KEY_FILE"
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          eval "$(node .site-toolkit/scripts/config.js --config "${{ inputs.config }}" --shell)"
+          [ -n "$NTFY_URL" ] || exit 0
+          curl -fsS -m 20 \
+            -H "Title: $SITE_LABEL deploy failed" -H "Priority: high" -H "Tags: rotating_light" \
+            -d "Push to main did not reach $SITE_LABEL.
+          Commit: ${{ github.sha }}
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "$NTFY_URL" || true

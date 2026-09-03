@@ -66,12 +66,18 @@ const out = {
   FTP_PORT: (cred.port && env[cred.port]) || c.port || '21',
   FTP_PROTOCOL: (cred.protocol && env[cred.protocol]) || c.protocol || 'ftp',
   NTFY_URL: (c.alerts && c.alerts.ntfy_secret && env[c.alerts.ntfy_secret]) || '',
+  // rsync over ssh: port and local key path from config.ssh; in CI the
+  // workflow writes the key named by ssh.key_secret to SSH_KEY_FILE.
+  SSH_PORT: (c.ssh && c.ssh.port) ? String(c.ssh.port) : '',
+  SSH_KEY_PATH: (c.ssh && c.ssh.key) ? expandHome(c.ssh.key) : '',
+  SSH_KEY_SECRET: (c.ssh && c.ssh.key_secret) || '',
+  SSH_PRIVATE_KEY: (c.ssh && c.ssh.key_secret && env[c.ssh.key_secret]) || '',
 };
 
 if (argv.includes('--shell')) {
   const q = s => `'${String(s).replace(/'/g, `'\\''`)}'`;
   for (const [k, v] of Object.entries(out)) console.log(`${k}=${q(v)}`);
 } else {
-  const safe = Object.assign({}, out, { FTP_PASSWORD: out.FTP_PASSWORD ? '***' : '' });
+  const safe = Object.assign({}, out, { FTP_PASSWORD: out.FTP_PASSWORD ? '***' : '', SSH_PRIVATE_KEY: out.SSH_PRIVATE_KEY ? '***' : '' });
   console.log(JSON.stringify(safe, null, 2));
 }
