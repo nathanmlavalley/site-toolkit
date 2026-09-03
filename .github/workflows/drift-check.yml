@@ -53,8 +53,12 @@ jobs:
         run: |
           worst=0; failed=""
           for cfg in ${{ inputs.configs }}; do
-            if ! node .site-toolkit/scripts/live-check.js --config "$cfg" --deep; then
-              rc=$?; [ $rc -gt $worst ] && worst=$rc
+            # Capture the real exit status: "if ! cmd" would hand us the
+            # negation, which is how an errored check once passed as green.
+            rc=0
+            node .site-toolkit/scripts/live-check.js --config "$cfg" --deep || rc=$?
+            if [ "$rc" -ne 0 ]; then
+              [ "$rc" -gt "$worst" ] && worst=$rc
               failed="$failed $cfg"
             fi
           done
