@@ -25,10 +25,6 @@ on:
         description: Deploy even if the live site holds content not in git
         type: boolean
         default: false
-      toolkit_ref:
-        description: Tag of site-toolkit to run. Match the uses ref.
-        type: string
-        default: v1.1
 
     secrets:
       # Optional. Same-owner callers use "secrets: inherit" and the config
@@ -59,7 +55,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: nathanmlavalley/site-toolkit
-          ref: ${{ inputs.toolkit_ref }}
+          # The commit this reusable workflow itself came from, so the scripts
+          # always match the tag the caller pinned. Nothing to keep in sync.
+          ref: ${{ github.job_workflow_sha }}
           path: .site-toolkit
 
       - name: Install the deploy key

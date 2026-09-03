@@ -109,8 +109,7 @@ One generic set per job, so a cross-org drift sweep covers one site per call.
 This repo runs with each caller's credentials. A caller that references
 `@main` would execute whatever the latest commit here is, so one bad or
 malicious commit reaches every site at once. Callers reference `@v1` and this
-repo moves the `v1` tag deliberately. Keep `toolkit_ref` equal to the `uses:`
-ref; a reusable workflow cannot see its own ref.
+repo moves the `v1` tag deliberately.
 
 ## Local use
 
