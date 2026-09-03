@@ -1,0 +1,79 @@
+name: Deploy over FTP
+
+# Reusable workflow. A site repo calls this on push to main:
+#
+#   jobs:
+#     deploy:
+#       uses: nathanmlavalley/site-toolkit/.github/workflows/deploy-ftp.yml@v1
+#       with:
+#         config: site.config.json
+#       secrets: inherit
+#
+# Pushing to main is what puts a site live, so git is the only path to
+# production and no laptop's disk can diverge from the server. Before
+# mirroring, the drift check refuses to overwrite anything on the server that
+# is in no commit, which is how work edited directly on a host gets lost.
+#
+# Everything site-specific (source dir, remote dir, --delete, excludes, which
+# secrets hold the credentials) comes from the caller's site.config.json. This
+# file contains no host, path, account or credential.
+#
+# Keep toolkit_ref equal to the ref in the caller's `uses:` line. A reusable
+# workflow cannot see its own ref, so it has to be told which copy of the
+# scripts to check out.
+
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Path to site.config.json in the calling repo
+        type: string
+        required: true
+      skip_drift_check:
+        description: Deploy even if the live site holds content not in git
+        type: boolean
+        default: false
+      toolkit_ref:
+        description: Tag of site-toolkit to run. Match the uses ref.
+        type: string
+        default: v1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Every inherited secret, as JSON. config.js picks out the ones the
+      # config names. Values stay masked in logs.
+      SECRETS_JSON: ${{ toJSON(secrets) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # the drift check needs history to tell undeployed from edited-elsewhere
+
+      - uses: actions/checkout@v4
+        with:
+          repository: nathanmlavalley/site-toolkit
+          ref: ${{ inputs.toolkit_ref }}
+          path: .site-toolkit
+
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Refuse to overwrite work that only exists on the server
+        if: ${{ !inputs.skip_drift_check }}
+        run: node .site-toolkit/scripts/live-check.js --config "${{ inputs.config }}" --deep
+
+      - name: Deploy
+        run: bash .site-toolkit/scripts/deploy-ftp.sh --config "${{ inputs.config }}"
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          eval "$(node .site-toolkit/scripts/config.js --config "${{ inputs.config }}" --shell)"
+          [ -n "$NTFY_URL" ] || exit 0
+          curl -fsS -m 20 \
+            -H "Title: $SITE_LABEL deploy failed" -H "Priority: high" -H "Tags: rotating_light" \
+            -d "Push to main did not reach $SITE_LABEL.
+          Commit: ${{ github.sha }}
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            "$NTFY_URL" || true

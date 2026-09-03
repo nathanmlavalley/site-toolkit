@@ -1,0 +1,29 @@
+name: Deploy example.com
+
+# Copy to .github/workflows/deploy.yml in the site repo.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'site.config.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      skip_drift_check:
+        description: Deploy even if the live site holds content not in git
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: nathanmlavalley/site-toolkit/.github/workflows/deploy-ftp.yml@v1
+    with:
+      config: site.config.json
+      skip_drift_check: ${{ inputs.skip_drift_check || false }}
+    secrets: inherit

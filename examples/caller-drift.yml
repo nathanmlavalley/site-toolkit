@@ -1,0 +1,15 @@
+name: Live drift check
+
+# Copy to .github/workflows/drift-check.yml in the site repo.
+
+on:
+  schedule:
+    - cron: '15 11 * * *'    # 07:15 ET, before the workday
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: nathanmlavalley/site-toolkit/.github/workflows/drift-check.yml@v1
+    with:
+      configs: site.config.json
+    secrets: inherit

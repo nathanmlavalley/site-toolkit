@@ -1,0 +1,18 @@
+{
+  "name": "example",
+  "label": "example.com",
+  "transport": "ftp",
+  "source": "site",
+  "remote": "public_html",
+  "deletes": false,
+  "ignore": ["*.mov"],
+  "server_owned": ["uploads/", "data/site-data.json"],
+  "secrets": ["config.php"],
+  "credentials": {
+    "env_file": "~/path/to/example.env",
+    "host": "EXAMPLE_FTP_HOST",
+    "user": "EXAMPLE_FTP_USER",
+    "password": "EXAMPLE_FTP_PASSWORD"
+  },
+  "alerts": { "ntfy_secret": "NTFY_URL" }
+}
