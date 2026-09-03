@@ -240,9 +240,12 @@ function checkRsync(site) {
   for (const line of out.split('\n')) {
     if (line.startsWith('*deleting')) remoteOnly.push(line.replace(/^\*deleting\s+/, '').trim());
     else if (/^[<>]f/.test(line)) {
+      // itemize flags: YXcstpoguax. Only a checksum (c) or size (s) difference
+      // is content drift; a permission or ownership difference is not.
+      const flags = line.split(/\s+/)[0];
       const rel = line.replace(/^\S+\s+/, '').trim();
-      if (/\+{7}/.test(line)) notDeployed.push(rel);
-      else drift.push({ rel, live: 'differs', head: 'HEAD' });
+      if (/\+{7}/.test(flags)) notDeployed.push(rel);
+      else if (flags[2] === 'c' || flags[3] === 's') drift.push({ rel, live: 'differs', head: 'HEAD' });
     }
   }
   return { drift, behind: [], remoteOnly, notDeployed, mode: 'rsync', undirected: true };
