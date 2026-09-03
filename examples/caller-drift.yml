@@ -9,7 +9,8 @@ on:
 
 jobs:
   check:
-    uses: nathanmlavalley/site-toolkit/.github/workflows/drift-check.yml@v1
+    uses: nathanmlavalley/site-toolkit/.github/workflows/drift-check.yml@v1.9
     with:
+      toolkit_ref: v1.9
       configs: site.config.json
     secrets: inherit

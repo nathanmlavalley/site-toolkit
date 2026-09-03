@@ -74,8 +74,9 @@ on:
 concurrency: { group: deploy, cancel-in-progress: false }
 jobs:
   deploy:
-    uses: nathanmlavalley/site-toolkit/.github/workflows/deploy-ftp.yml@v1
+    uses: nathanmlavalley/site-toolkit/.github/workflows/deploy-ftp.yml@v1.9
     with:
+      toolkit_ref: v1.9    # must equal the tag on the uses line
       config: site.config.json
       skip_drift_check: ${{ inputs.skip_drift_check || false }}
     secrets: inherit
@@ -92,8 +93,9 @@ A repo in a different organization maps its secrets onto the generic names
 the workflows declare:
 
 ```yaml
-    uses: nathanmlavalley/site-toolkit/.github/workflows/drift-check.yml@v1.7
+    uses: nathanmlavalley/site-toolkit/.github/workflows/drift-check.yml@v1.9
     with:
+      toolkit_ref: v1.9
       configs: site.config.json
     secrets:
       FTP_HOST: ${{ secrets.STAGING_FTP_HOST }}
@@ -108,8 +110,9 @@ One generic set per job, so a cross-org drift sweep covers one site per call.
 
 This repo runs with each caller's credentials. A caller that references
 `@main` would execute whatever the latest commit here is, so one bad or
-malicious commit reaches every site at once. Callers reference `@v1` and this
-repo moves the `v1` tag deliberately.
+malicious commit reaches every site at once. Callers reference a tag and pass the same tag as `toolkit_ref`, because a
+reusable workflow cannot see its own ref and the scripts are checked out
+separately from the YAML.
 
 ## Local use
 

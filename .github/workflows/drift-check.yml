@@ -20,6 +20,10 @@ name: Live drift check
 on:
   workflow_call:
     inputs:
+      toolkit_ref:
+        description: The site-toolkit tag to run. Must equal the ref in the caller's uses line.
+        type: string
+        required: true
       configs:
         description: Space-separated site.config.json paths to check (FTP sites only)
         type: string
@@ -53,9 +57,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: nathanmlavalley/site-toolkit
-          # The commit this reusable workflow itself came from, so the scripts
-          # always match the tag the caller pinned. Nothing to keep in sync.
-          ref: ${{ github.job_workflow_sha }}
+          # A reusable workflow cannot see its own ref (job_workflow_sha resolved
+          # empty, and an empty ref checks out main). The caller passes the tag.
+          ref: ${{ inputs.toolkit_ref }}
           path: .site-toolkit
 
       - name: Install lftp
