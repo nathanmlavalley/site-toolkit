@@ -53,7 +53,13 @@ echo "  from $SITE_SOURCE  to $FTP_PROTOCOL://$FTP_HOST:$FTP_PORT/$SITE_REMOTE"
 [ -n "$DRY" ] && echo "  DRY RUN: nothing will be uploaded"
 
 cd "$SRC"
+# lftp echoes full URLs, credentials included, in --dry-run and on some errors.
+# Everything it prints goes through a redactor so a password can never land in
+# a terminal, a transcript or a log. The exit status is lftp's, not sed's.
 "$LFTP" -u "$FTP_USER,$FTP_PASSWORD" "$FTP_PROTOCOL://$FTP_HOST:$FTP_PORT" \
-  -e "set ftp:ssl-allow no; set sftp:auto-confirm yes; set net:timeout 60; mirror $OPTS . '$SITE_REMOTE'; bye"
+  -e "set ftp:ssl-allow no; set sftp:auto-confirm yes; set net:timeout 60; mirror $OPTS . '$SITE_REMOTE'; bye" 2>&1 \
+  | sed -E 's#(://)[^/@[:space:]]+@#\1***@#g'
+RC=${PIPESTATUS[0]}
+[ "$RC" -eq 0 ] || { echo "lftp exited $RC" >&2; exit "$RC"; }
 
 echo "Deploy complete: $SITE_LABEL"
