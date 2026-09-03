@@ -85,6 +85,25 @@ jobs:
 
 **4. Repository secrets** with the names the config uses.
 
+## Callers in another organization
+
+`secrets: inherit` only works when the caller and this repo share an owner.
+A repo in a different organization maps its secrets onto the generic names
+the workflows declare:
+
+```yaml
+    uses: nathanmlavalley/site-toolkit/.github/workflows/drift-check.yml@v1.7
+    with:
+      configs: site.config.json
+    secrets:
+      FTP_HOST: ${{ secrets.STAGING_FTP_HOST }}
+      FTP_USER: ${{ secrets.STAGING_FTP_USER }}
+      FTP_PASSWORD: ${{ secrets.STAGING_FTP_PASSWORD }}
+```
+
+The scripts use the config's credential names first and fall back to these.
+One generic set per job, so a cross-org drift sweep covers one site per call.
+
 ## Pin to a tag, never `@main`
 
 This repo runs with each caller's credentials. A caller that references

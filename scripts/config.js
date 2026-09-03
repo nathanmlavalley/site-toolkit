@@ -60,19 +60,19 @@ const out = {
   SITE_REMOTE: (cred.remote_dir && env[cred.remote_dir]) || c.remote || '.',
   SITE_DELETES: c.deletes ? '1' : '',
   SITE_EXCLUDE_GLOBS: globs.join('\n'),
-  FTP_HOST: cred.host ? (env[cred.host] || '') : '',
-  FTP_USER: cred.user ? (env[cred.user] || '') : '',
-  FTP_PASSWORD: cred.password ? (env[cred.password] || '') : '',
+  FTP_HOST: (cred.host && env[cred.host]) || env.FTP_HOST || '',
+  FTP_USER: (cred.user && env[cred.user]) || env.FTP_USER || '',
+  FTP_PASSWORD: (cred.password && env[cred.password]) || env.FTP_PASSWORD || '',
   FTP_PORT: (cred.port && env[cred.port]) || c.port || '21',
   FTP_PROTOCOL: (cred.protocol && env[cred.protocol]) || c.protocol || 'ftp',
   FTP_TLS: c.tls ? '1' : '',
-  NTFY_URL: (c.alerts && c.alerts.ntfy_secret && env[c.alerts.ntfy_secret]) || '',
+  NTFY_URL: (c.alerts && c.alerts.ntfy_secret && env[c.alerts.ntfy_secret]) || env.NTFY_URL || '',
   // rsync over ssh: port and local key path from config.ssh; in CI the
   // workflow writes the key named by ssh.key_secret to SSH_KEY_FILE.
   SSH_PORT: (c.ssh && c.ssh.port) ? String(c.ssh.port) : '',
   SSH_KEY_PATH: (c.ssh && c.ssh.key) ? expandHome(c.ssh.key) : '',
   SSH_KEY_SECRET: (c.ssh && c.ssh.key_secret) || '',
-  SSH_PRIVATE_KEY: (c.ssh && c.ssh.key_secret && env[c.ssh.key_secret]) || '',
+  SSH_PRIVATE_KEY: (c.ssh && c.ssh.key_secret && env[c.ssh.key_secret]) || env.SSH_PRIVATE_KEY || '',
 };
 
 if (argv.includes('--shell')) {

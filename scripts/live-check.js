@@ -148,13 +148,14 @@ function gitHistory(localDir) {
 
 function lftpRun(site, env, cmd) {
   const c = site.credentials;
-  const creds = `${env[c.user]},${env[c.password]}`;
+  const host = (c.host && env[c.host]) || env.FTP_HOST;
+  const creds = `${(c.user && env[c.user]) || env.FTP_USER},${(c.password && env[c.password]) || env.FTP_PASSWORD}`;
   // Plain FTP unless the config says "tls": true, in which case TLS is
   // required for both control and data (explicit FTPS), cert unverified.
   const ssl = site.tls
     ? 'set ftp:ssl-allow yes; set ftp:ssl-force yes; set ftp:ssl-protect-data yes; set ssl:verify-certificate no'
     : 'set ftp:ssl-allow no';
-  return execFileSync(LFTP, ['-u', creds, `ftp://${env[c.host]}`,
+  return execFileSync(LFTP, ['-u', creds, `ftp://${host}`,
     '-e', `${ssl}; set net:timeout 45; ${cmd}; bye`],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] });
 }
@@ -162,8 +163,11 @@ function lftpRun(site, env, cmd) {
 function checkFtp(site) {
   const c = site.credentials;
   const env = credentials(site);
-  if (!c.host || !env[c.host]) {
-    return { error: `no credentials: need ${c.host || 'credentials.host'} via env, SECRETS_JSON or ${c.env_file || 'credentials.env_file'}` };
+  // Generic names are the fallback for callers that cannot inherit secrets
+  // (a different org or user account than the toolkit).
+  const host = (c.host && env[c.host]) || env.FTP_HOST;
+  if (!host) {
+    return { error: `no credentials: need ${c.host || 'credentials.host'} (or FTP_HOST) via env, SECRETS_JSON or ${c.env_file || 'credentials.env_file'}` };
   }
   const remote = (c.remote_dir && env[c.remote_dir]) || site.remote;
   const listing = lftpRun(site, env, `find -l ${remote}`);

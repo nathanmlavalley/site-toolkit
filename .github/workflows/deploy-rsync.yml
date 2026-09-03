@@ -30,6 +30,21 @@ on:
         type: string
         default: v1.1
 
+    secrets:
+      # Optional. Same-owner callers use "secrets: inherit" and the config
+      # names which secret holds each value. A caller in ANOTHER org or user
+      # account cannot inherit (GitHub limits inherit to the same org), so it
+      # maps its own secret names onto these generic ones instead:
+      #   secrets:
+      #     FTP_HOST: ${{ secrets.STAGING_FTP_HOST }}
+      # The scripts fall back to these names when the config's names resolve
+      # to nothing.
+      FTP_HOST: { required: false }
+      FTP_USER: { required: false }
+      FTP_PASSWORD: { required: false }
+      SSH_PRIVATE_KEY: { required: false }
+      NTFY_URL: { required: false }
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
