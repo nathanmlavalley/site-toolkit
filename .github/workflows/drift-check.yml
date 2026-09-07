@@ -25,7 +25,7 @@ on:
         type: string
         required: true
       configs:
-        description: Space-separated site.config.json paths to check (FTP sites only)
+        description: Space-separated site.config.json paths to check (FTP and rsync sites)
         type: string
         required: true
 
@@ -49,6 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SECRETS_JSON: ${{ toJSON(secrets) }}
+      SSH_KEY_FILE: ${{ github.workspace }}/.deploy_key
     steps:
       - uses: actions/checkout@v4
         with:
@@ -65,6 +66,26 @@ jobs:
       - name: Install lftp
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
 
+      - name: Install the SSH key for rsync sites
+        # Same as deploy-rsync.yml. Without this every rsync site errored
+        # daily ("Identity file not accessible") and the alert below called
+        # it drift, 2026-09-04 to 09-07.
+        run: |
+          umask 077; mkdir -p ~/.ssh
+          for cfg in ${{ inputs.configs }}; do
+            eval "$(node .site-toolkit/scripts/config.js --config "$cfg" --shell)"
+            [ "$SITE_TRANSPORT" = "rsync" ] || continue
+            if [ -n "$SSH_PRIVATE_KEY" ] && [ ! -s "$SSH_KEY_FILE" ]; then
+              printf '%s\n' "$SSH_PRIVATE_KEY" > "$SSH_KEY_FILE"
+            fi
+            host="${SITE_REMOTE#*@}"; host="${host%%:*}"
+            for i in 1 2 3; do
+              ssh-keyscan -T 15 -p "${SSH_PORT:-22}" -H "$host" >> ~/.ssh/known_hosts 2>/dev/null && break
+              sleep 3
+            done
+          done
+          true
+
       - name: Check every site
         id: check
         run: |
@@ -80,7 +101,12 @@ jobs:
             fi
           done
           echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          echo "worst=$worst" >> "$GITHUB_OUTPUT"
           exit $worst
+
+      - name: Remove the SSH key
+        if: always()
+        run: rm -f "$SSH_KEY_FILE"
 
       - name: Alert
         if: failure()
@@ -89,9 +115,19 @@ jobs:
           [ -n "$first" ] || first=$(echo "${{ inputs.configs }}" | awk '{print $1}')
           eval "$(node .site-toolkit/scripts/config.js --config "$first" --shell)"
           [ -n "$NTFY_URL" ] || exit 0
+          # Exit 1 is real drift. Exit 2 means the check itself could not run
+          # (credentials, network): say that, not "work not in git".
+          if [ "${{ steps.check.outputs.worst }}" = "1" ]; then
+            title="Live site has work not in git"; tags="warning"
+            body="Drift in:${{ steps.check.outputs.failed }}
+          A push will still deploy where the caller allows it; reconcile first if the live edit matters."
+          else
+            title="Live drift check could not run"; tags="grey_question"
+            body="Could not check:${{ steps.check.outputs.failed }}
+          Credentials or network, not drift. Nothing on the server was compared."
+          fi
           curl -fsS -m 20 \
-            -H "Title: Live site has work not in git" -H "Priority: high" -H "Tags: warning" \
-            -d "Drift or check failure in:${{ steps.check.outputs.failed }}
-          Deploys will refuse until it is reconciled.
+            -H "Title: $title" -H "Priority: default" -H "Tags: $tags" \
+            -d "$body
           Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             "$NTFY_URL" || true
